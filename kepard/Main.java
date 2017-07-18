@@ -35,8 +35,9 @@ public class Main
     {
         Vessel booster = spaceCenter.getActiveVessel();
         
-        Triplet<Double, Double, Double> landSite = booster.position(booster.getOrbit().getBody().getReferenceFrame());
+        Triplet<Double, Double, Double> landSite = booster.position(booster.getOrbit().getBody().getReferenceFrame());	//setting landing position
         
+        //initialization
         jpilot.window = window;
         jpilot.start();
         jpilot.Initialize(booster, true);
@@ -51,21 +52,21 @@ public class Main
         
         if(jpilot.ascent_apoapsis >= 25000)
         {
-        	jpilot.ascent_speed_horizontal = -1.9944608793218117
-        	        							+ 1.9518595102808859e-004 * jpilot.ascent_apoapsis
-        	        							- 5.0246650413714171e-010 * Math.pow(jpilot.ascent_apoapsis,2)
-        	        							+ 2.5025257031322003e-015 * Math.pow(jpilot.ascent_apoapsis,3);
+        	//Coriolis effect avoidance
+        	jpilot.ascent_speed_horizontal = -1.9944608793218117 + 1.9518595102808859e-004 * jpilot.ascent_apoapsis - 5.0246650413714171e-010 * Math.pow(jpilot.ascent_apoapsis,2) + 2.5025257031322003e-015 * Math.pow(jpilot.ascent_apoapsis,3);
         }
         
+        //launch
         jpilot.setBoosterProgram(JPilot.BOOSTER_PROGRAM_ASCENT);
         
         Thread.sleep(3000);
         jpilot.booster_control.activateNextStage();
         jpilot.booster_control.setGear(false);
         
-        while(!jpilot.ascent_done && !jpilot.abort_activated){Thread.sleep(30);}
+        while(!jpilot.ascent_done && !jpilot.abort_activated){Thread.sleep(30);}	//waiting for ascent completion
         jpilot.hover_alt = 18;
         
+        //separation
         if(!jpilot.abort_activated)
         {
 	        Thread.sleep(3000);
@@ -91,10 +92,13 @@ public class Main
         }
         
         if(jpilot.booster != null)
-        {
-	        while(jpilot.booster_alt_radar > 60000 || jpilot.booster_speed_vertical > 0){Thread.sleep(30);}
-	        while(jpilot.booster_speed_vertical > -20){Thread.sleep(30);}
-	        
+        {	//wait for booster to start falling
+	        while(jpilot.booster_alt_radar > 60000 || jpilot.booster_speed_vertical > -70)
+	        {
+	        	if(jpilot.booster_speed_vertical <= 0 && jpilot.booster_alt_radar < 5000) break;
+	        	Thread.sleep(30);
+	        }
+	        //change gimbal limit in booster's engine
 	        List<Engine> enList = jpilot.booster.getParts().getEngines();
 	        for(int i = 0; i < enList.size(); i++)
 	        {
@@ -114,7 +118,7 @@ public class Main
 	        jpilot.align_pitch_factor = 1d;
 	        jpilot.align_vel_max = 50;
 	        jpilot.align_vel_factor= 1.25d;
-	        jpilot.align_vel_pow = 1.1d;//1.7d;
+	        jpilot.align_vel_pow = 1.1d;
 	        jpilot.align_vel_deadband = 1;
 	        jpilot.align_deadband_size = 8;
 	        jpilot.align_vel_deadbandDecrease_distance = 600;
@@ -127,6 +131,7 @@ public class Main
 	        jpilot.booster_control.setRCS(false);
         	jpilot.booster_rcs_enabled = false;
 	        
+        	//descent phase control
 	        while(!jpilot.hover_alt_reached || !jpilot.align_aligned)
 	        {
 	        	if(jpilot.booster_alt_radar < 1000 && jpilot.align_airbrakes_enabled)
@@ -140,7 +145,6 @@ public class Main
 	        		jpilot.booster_control.setRCS(true);
         			jpilot.booster_rcs_enabled = true;
         		}
-	        	else if(!jpilot.align_toLaunchpad) jpilot.booster_control.setRCS(false);
 	        		
 	        	if(jpilot.booster_alt_radar < 4500 && jpilot.booster_alt_radar > 100)
 	        	{
@@ -159,15 +163,6 @@ public class Main
 	        	else jpilot.hover_alt = hoverAlt;
 	        	Thread.sleep(30);
 	        }
-	        
-	        /*jpilot.align_pitch_min = 75;
-	        jpilot.align_pitch_factor = 1.35d;
-	        jpilot.align_vel_max = 10;
-	        jpilot.align_vel_factor= 1;
-	        jpilot.align_vel_pow = 1.2d;
-	        jpilot.align_vel_deadband = 2;
-	        jpilot.align_deadband_size = 6;
-	        jpilot.align_vel_deadbandDecrease_distance = 450;*/
 	        
 	        while(!jpilot.align_aligned){Thread.sleep(30);}
 	        
