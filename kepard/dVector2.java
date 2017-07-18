@@ -19,6 +19,12 @@ public class dVector2
 						-((Double)t0.getValue1()).doubleValue() + ((Double)t1.getValue1()).doubleValue());
 	}
 
+	public void Set(double arg0, double arg1)
+	{
+		x = arg0;
+		y = arg1;
+	}
+	
 	public double Magnitude()
 	{
 		return Math.sqrt((x*x) + (y*y));

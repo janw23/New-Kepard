@@ -37,7 +37,7 @@ public class JWindow extends JFrame implements ActionListener
 	
 	int telemetry_box_width = 250;
 	public String[][] telemetry_booster;
-	public dVector2 telemetry_booster_finalDistance;
+	public dVector2 telemetry_booster_finalDistance = new dVector2(-999,-999);
 	public boolean[] telemetry_booster_brakes = new boolean[4];
 	public String[][] telemetry_capsule;
 	
@@ -96,8 +96,6 @@ public class JWindow extends JFrame implements ActionListener
 			{
 				int h = Integer.parseInt(text_ap.getText());
 				h = Math.min(Math.max(30000, h), 170000);
-				
-				System.out.println("button_launch pressed");
 				
 				try {
 					Main.connection = Connection.newInstance();

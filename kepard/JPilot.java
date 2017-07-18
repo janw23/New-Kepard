@@ -74,7 +74,7 @@ public class JPilot extends Thread
 	public float abort_chute_main_safeVel = 230;
 	public float abort_chute_safeAlt = 7000;
 	public float abort_pitch_min = 50;
-	public float abort_booster_loss_pitch = 30;
+	public float abort_booster_loss_pitch = 10;
 	public boolean abort_chute_alert_displayed = false;
 	public boolean abort_booster_catchup = false;
 	public long abort_booster_ignition_delay = 1000000000l;
@@ -132,7 +132,11 @@ public class JPilot extends Thread
 		
 		while(true)
 		{
-			Refresh();
+			try {
+				Refresh();
+			} catch (RPCException | IOException e1) {
+				e1.printStackTrace();
+			}
 			try {
 				Thread.sleep(20);
 			} catch (InterruptedException e) {
@@ -152,7 +156,6 @@ public class JPilot extends Thread
 		if(!(num == BOOSTER_PROGRAM_ABORT && (abort_activated || capsule != null)))
 		{
 			booster_program = num;
-		
 			window.PaintText("Booster program changed to: " + getBoosterProgram(num));
 		}
 	}
@@ -291,7 +294,7 @@ public class JPilot extends Thread
 		else return hdg - 360f;
 	}
 	
-	void Refresh()
+	void Refresh() throws RPCException, IOException
 	{
 		if(isActive)
 		{
@@ -301,7 +304,9 @@ public class JPilot extends Thread
 			}
 			catch(Exception e)
 			{
-				booster_update = false;
+				booster_update = setVesselsAfterSeparation();
+				if(booster_update) BoosterInitialUpdate();
+				
 				window.PaintText("ALERT: Booster's program encountered an error and\nmay not work properly. Error message:\n" + e.getMessage());
 				e.printStackTrace();
 			}
@@ -323,7 +328,7 @@ public class JPilot extends Thread
 	
 	void checkForAbort() throws RPCException, IOException
 	{
-		if(booster_flight_surface.getPitch() < abort_pitch_min || (booster.getMaxVacuumThrust() < 10 && booster_alt_radar > 30))
+		if(booster_flight_surface.getPitch() < abort_pitch_min || booster.getMaxVacuumThrust() < 10 && booster_alt_radar > 30)
 			setBoosterProgram(BOOSTER_PROGRAM_ABORT);
 	}
 	
@@ -331,7 +336,6 @@ public class JPilot extends Thread
 	{
 		abort_activated = true;
 		setAlign(false);
-		booster_control.setThrottle(0);
 		ascent_gforce = 0.3;
 		capsule_landing_engines_fired = true;
 		abort_booster_ignition_timer = System.nanoTime();
@@ -489,7 +493,9 @@ public class JPilot extends Thread
 			booster_autopilot.targetPitchAndHeading(align_pdir.pitch, align_pdir.HDG);
 			booster_autopilot.setTargetRoll(getTargetRoll(align_pdir.HDG));
 					
-			align_finalDistance = align_distance_horizontal.Add(align_vel_current.Multiply(booster_alt_radar/(Math.abs(booster_speed_vertical))));
+			if(booster_speed_vertical < -0.1) align_finalDistance = align_distance_horizontal.Add(align_vel_current.Multiply(booster_alt_radar/(Math.abs(booster_speed_vertical))));
+			else align_finalDistance.Set(0,0);
+			
 			window.telemetry_booster_finalDistance = align_finalDistance;
 					
 			if(align_finalDistance.Magnitude() > booster_alt_radar * align_distance_max_factor + 100)
@@ -588,10 +594,10 @@ public class JPilot extends Thread
 			{
 				if(booster_control.getAbort() || booster_program == BOOSTER_PROGRAM_ABORT)
 				{
-					makeAbort();
-					
 					if(booster_program == BOOSTER_PROGRAM_ABORT) booster_control.setAbort(true);
 					else setBoosterProgram(BOOSTER_PROGRAM_ABORT);
+					
+					makeAbort();
 					
 					if(setVesselsAfterSeparation())
 					{
@@ -612,7 +618,7 @@ public class JPilot extends Thread
 		{
 			if(System.nanoTime() - abort_booster_ignition_timer >= abort_booster_ignition_delay)
 			{
-				if(booster_apoapsis < capsule_apoapsis && (booster_apoapsis < capsule_alt || capsule_speed_vertical > 0))
+				if(booster_apoapsis < capsule_apoapsis && (booster_apoapsis < capsule_alt || capsule_speed_vertical > 0) && capsule_update)
 				{
 					booster_control.setThrottle((float) ((1+ascent_gforce)/booster_TWR));
 					
